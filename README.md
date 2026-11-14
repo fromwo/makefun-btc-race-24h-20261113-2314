@@ -19,12 +19,25 @@ full-size round trip costs ~26–28 bps in fees, slippage and pool impact and
   position, capped by the weight cap), filled at the next bar's open.
 - **Exit (when holding):** take-profit **+1.5%** or stop-loss **−0.5%**
   against the fill price reported by the harness. Both are re-checked every
-  bar, so a refused sell is retried while its reason holds.
+  bar, so a refused sell is retried while its reason holds. A banded
+  trend-failure exit also fires if the close falls 0.5% *below* the SMA(60)
+  — a genuine failure of the hourly turn, not a 1-minute wiggle at the line.
+  Entries must also land within 0.3% above the SMA, so the bot never chases
+  a vertical 1-minute spike.
 - Long only, no leverage, no shorts, deterministic (no clock, no randomness).
 
-Local grade (`grade-local --driver process` on the kit's dev window):
-**net PnL +$4.23**, 2 round trips, win rate 0.50, max drawdown 1.23%,
-0 rejected orders, guardrails met, two executions reproduced byte for byte.
+Local grade (`grade-local --driver process --worktree` on the kit's dev window):
+**net PnL +$6.57**, 2 round trips, win rate 0.50, max drawdown 1.00%,
+fees $1.61, net PnL at 2x fees +$4.96, 0 rejected orders, guardrails met,
+two executions reproduced byte for byte.
+
+Round 4 post-mortem: the Round 4 additions (unbanded close-below-SMA exit,
+4-hour time stop, stop-loss re-entry cooldown) scored **−$32.26** on the
+server dev grade — the local run reproduces that number exactly, so there
+was no window/fee mismatch; the additions themselves were the bug. The
+unbanded exit whipsawed 8 of 10 round trips (each −$3.4 to −$4.6) and the
+time stop cut the one winner from +$12.28 to +$1.54. Both were removed; the
+banded exit above is their replacement.
 
 ## Run it
 
